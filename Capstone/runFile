@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+#SBATCH -A DDP140
+#SBATCH --job-name="cddebug"
+#SBATCH --output="cdeep3m_nn_.%j.%N.out"
+#SBATCH --time=48:00:00
+#SBATCH --ntasks-per-node=28
+#SBATCH --partition=gpu
+#SBATCH --gres=gpu:p100:4
+#SBATCH --no-requeue
+#SBATCH --export=ALL
+
+declare -xr LOCAL_SCRATCH="/scratch/${USER}/${SLURM_JOB_ID}"
+declare -xr LUSTRE_SCRATCH="/oasis/scratch/comet/${USER}/temp_project"
+declare -xr LUSTRE_STORAGE="/oasis/projects/nsf"
+declare -xr SINGULARITY_MODULE='singularity/2.6.1'
+
+# Set modules
+
+module purge
+module load "${SINGULARITY_MODULE}"
+
+# Run the test, (Demorun 1)
+#singularity exec /home/t1singha/cdeep3m-py-gcc7.1.0.simg /home/t1singha/python_training/execute_file.sh
+singularity exec /share/apps/gpu/singularity/images/keras/keras-v2.2.4-tensorflow-v1.12-gpu-20190214.simg /home/pkolkur/python_training/execute_file.sh
+~                
