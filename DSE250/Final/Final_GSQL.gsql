@@ -1,0 +1,49 @@
+create query final() for graph FinalGraph {        
+	typedef tuple<vertex src_node, vertex tar_node> tup;
+        SetAccum<tup> @@source_target;
+        ListAccum<VERTEX> @@vertexList;
+	SetAccum<VERTEX> @@target_nodes, @@target_nodes_E, @@avoid_loops;
+	SumAccum<INT> @@stop;
+        
+	source_vertex = {ANY};
+        source_node = SELECT v FROM source_vertex:v ACCUM @@vertexList += v;
+	target_node (ANY) = source_node; 
+	
+        FOREACH src in @@vertexList DO
+                @@stop=0;
+                source_node = {src};
+		target_node_A_to_E = SELECT t FROM source_node-(A)->ANY:t;
+                target_node = SELECT t FROM source_node-(A)->ANY:t;
+                
+		WHILE @@stop==0 DO
+			tempB = SELECT t FROM target_node:s-(B)->ANY:t WHERE s NOT IN @@avoid_loops  ACCUM @@target_nodes += t, @@avoid_loops += s;
+
+			tempC = SELECT t FROM target_node-(C)->ANY:t;
+			tempD = SELECT t FROM tempC:s-(D)->ANY:t WHERE s NOT IN @@avoid_loops ACCUM @@target_nodes += t, @@avoid_loops += s;
+
+			tempE = SELECT t FROM tempB-(E)->ANY:t ACCUM @@target_nodes_E += t;
+			tempE = SELECT t FROM tempD-(E)->ANY:t ACCUM @@target_nodes_E += t;
+					
+			IF tempB.size()==0 AND tempD.size()==0 THEN @@stop=1;
+			ELSE target_node = @@target_nodes;
+			END;
+			@@target_nodes.clear();
+		END;
+		
+		tar = SELECT t FROM target_node_A_to_E-(E)->ANY:t ACCUM @@target_nodes += t;
+                tar = SELECT t FROM target_node-(E)->ANY:t ACCUM @@target_nodes += t; 
+
+		FOREACH tar_node in @@target_nodes_E DO
+                        @@target_nodes += tar_node;
+                END;
+		@@target_nodes_E.clear();
+		
+		FOREACH tar_node in @@target_nodes DO
+			@@source_target += tup(src, tar_node);
+		END;
+		@@target_nodes.clear();
+	
+		@@avoid_loops.clear();
+        END;
+        PRINT @@source_target;
+}

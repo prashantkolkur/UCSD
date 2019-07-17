@@ -1,0 +1,66 @@
+create query actors_connected() for graph MovieGraph {
+	MapAccum<STRING, SetAccum<string>> @@role_to_person, @@person_to_role, @@movie_to_person, @@person_to_movie;
+	MapAccum<INT, SetAccum<string>> @@person_connections;  
+	SetAccum<String> @@movie_list, @@movie_set, @@temp_movie_set, @@person_set, @@temp_person_set;
+	SumAccum<INT> @@degree_of_separation=0;
+	INT stop=0; 
+	actors = {Person.*}; 
+	dirs = {Person.*}; 
+	role = {Role.*};
+
+	actor_role = SELECT r FROM actors:a-(ActorRole)->Role:r 
+		ACCUM 
+			@@role_to_person += (r.role->a.name);
+ 
+	movie_to_person = SELECT r FROM role:r-(RoleMovie)->Movie:m 
+		ACCUM 
+			@@movie_to_person += (m.title->@@role_to_person.get(r.role)),
+			@@movie_list += m.title;
+
+	FOREACH movie in @@movie_list DO
+		FOREACH person in @@movie_to_person.get(movie) DO
+			@@person_to_movie += (person->movie);
+		END;
+	END;
+
+	director_to_movie = SELECT d FROM dirs:d-(DirectorOf)->Movie:m 
+		ACCUM 
+			@@movie_to_person += (m.title->d.name),
+			@@person_to_movie += (d.name->m.title);
+	
+	#PRINT @@movie_to_person;
+	#PRINT @@person_to_movie;
+
+	@@movie_set = @@person_to_movie.get("Kevin Bacon");
+	@@person_set = "Kevin Bacon";
+	@@person_connections += (@@degree_of_separation->@@person_set);
+
+	WHILE stop==0 DO
+		FOREACH movie in @@movie_set DO
+			FOREACH person in @@movie_to_person.get(movie) DO
+				@@temp_person_set += person;
+			END;
+		END;
+
+		@@person_set = @@temp_person_set MINUS @@person_set;
+		@@temp_person_set.clear();
+		
+		IF 
+			@@person_set.size() == 0 THEN stop=1; 
+		ELSE 
+			@@degree_of_separation += 1;
+			@@person_connections += (@@degree_of_separation->@@person_set);
+		END;		
+
+		FOREACH person in @@person_set DO
+			FOREACH movie in @@person_to_movie.get(person) DO
+				@@temp_movie_set += movie;
+			END;
+		END;
+
+		@@movie_set = @@temp_movie_set MINUS @@movie_set;
+		@@temp_movie_set.clear();
+	END;
+
+	PRINT @@person_connections;
+} 

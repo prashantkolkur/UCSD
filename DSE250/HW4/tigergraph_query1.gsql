@@ -1,0 +1,12 @@
+create query dir_never_acted() for graph MovieGraph {
+	ArrayAccum<SumAccum<INT>> @edgesByType[2]; 
+	per = {Person.*}; 
+	Persons = SELECT s FROM per:s -(:e)-> :t 
+		  ACCUM 
+			CASE e.type 
+			     WHEN "DirectorOf" THEN s.@edgesByType[0] += 1 
+			     WHEN "ActorRole"  THEN s.@edgesByType[1] += 1 
+			END; 
+	
+	PRINT Persons[Persons.@edgesByType] where Persons.@edgesByType[0]>0 and Persons.@edgesByType[1]==0;
+}

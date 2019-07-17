@@ -1,0 +1,10 @@
+create query role_count() for graph MovieGraph {
+	MapAccum<STRING, INT> @@movieaccum, @@diraccum; 
+	roles = {Role.*}; 
+	dirs = {Person.*}; 
+	role_count = SELECT m FROM roles:s-(RoleMovie)->Movie:m ACCUM @@movieaccum += (m.title->1); 
+	dir_num_role_count = SELECT m FROM dirs:d-(DirectorOf)->Movie:m ACCUM @@diraccum += (d.name->@@movieaccum.get(m.title)); 
+	PRINT @@diraccum;
+ }
+
+

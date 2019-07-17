@@ -1,0 +1,20 @@
+create query actors_worked() for graph MovieGraph {
+	MapAccum<STRING, SetAccum<string>> @@role_to_person, @@movie_to_person, @@actors; 
+	SetAccum<String> @@directors; 
+	INT flag=0;
+	SetAccum<String> @@actors_set, @@temp; 
+	actors = {Person.*}; 
+	dirs = {Person.*}; 
+	role = {Role.*};
+	actor_role = SELECT r FROM actors:a-(ActorRole)->Role:r ACCUM @@role_to_person += (r.role->a.name); 
+	movie_to_person = Select r from role:r-(RoleMovie)->Movie:m ACCUM @@movie_to_person += (m.title->@@role_to_person.get(r.role)); 
+	directors = SELECT d from dirs:d-(DirectorOf)->Movie:m where d.born>1966 
+		ACCUM @@actors += (d.name->@@movie_to_person.get(m.title)), @@directors += d.name; 
+	FOREACH key IN @@directors 
+		DO 
+			IF flag==0 THEN @@actors_set=@@actors.get(key);flag=1;
+			ELSE @@temp=@@actors.get(key);@@actors_set=@@actors_set INTERSECT @@temp;
+			END; 
+		END;
+	PRINT @@actors_set;
+}
